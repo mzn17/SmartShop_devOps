@@ -1,6 +1,6 @@
 {
   "name": "smartstore-backend",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "private": true,
   "description": "API REST SmartStore - gestion de stock, caisse et facturation",
   "main": "server.js",
