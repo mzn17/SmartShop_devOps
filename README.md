@@ -9,3 +9,9 @@ Application de gestion de magasin (caisse, stock, administration).
 ## Status de la caisse
 
 GET /api/health → {"success":true,...}
+
+## Démarrage rapide
+
+npm --prefix frontend ci && VITE_API_URL=/api npm --prefix frontend run build
+docker compose up -d --build
+curl http://localhost:5000/api/health
