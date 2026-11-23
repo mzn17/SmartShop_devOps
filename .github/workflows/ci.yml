@@ -33,7 +33,11 @@ jobs:
         run: npm ci --prefix backend
 
       - name: Vérification syntaxe backend
-        run: find backend -name '*.js' -not -path '*/node_modules/*' -exec node --check {} \;
+        shell: bash
+        run: |
+          # xargs propage le code retour : une seule erreur de syntaxe fait échouer l'étape
+          find backend -name '*.js' -not -path '*/node_modules/*' -print0 \
+            | xargs -0 -n1 node --check
 
       - name: Tests backend (node:test)
         run: npm test --prefix backend
@@ -121,9 +125,11 @@ jobs:
 
       - name: Mettre en service l'image publiée
         run: |
-          docker compose -f compose.staging.yaml pull
-          docker compose -f compose.staging.yaml up -d --remove-orphans
+          docker compose --env-file .env.deploy -f compose.staging.yaml pull
+          docker compose --env-file .env.deploy -f compose.staging.yaml up -d --remove-orphans
           ./scripts/wait-healthy.sh
 
       - name: Vérifier la version réellement en service
-        run: docker inspect --format '{{ index .Config.Labels "version" }}' smartshop-staging-api-1
+        run: |
+          CID="$(docker compose --env-file .env.deploy -f compose.staging.yaml ps -q api)"
+          docker inspect --format '{{ index .Config.Labels "version" }}' "$CID"

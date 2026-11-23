@@ -118,7 +118,7 @@ Les images sont immuables et taguées : revenir en arrière = remettre l'ancien 
 Même mécanisme manuel :
 
 ```bash
-IMAGE_TAG=v1.1.0 docker compose -f compose.staging.yaml up -d
+IMAGE_TAG=v1.1.0 docker compose --env-file .env.deploy -f compose.staging.yaml up -d
 ```
 
 ## Protection de `main` et démonstration du pipeline rouge

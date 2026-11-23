@@ -34,7 +34,7 @@ Navigateur ──► frontend Nginx (:3000) ──/api──► api Node/Express
 ## 4. Retour arrière
 
 1. Version précédente publiée : `v1.1.0`.
-2. `./scripts/rollback.sh v1.1.0` (équivalent : `IMAGE_TAG=v1.1.0 docker compose -f compose.staging.yaml up -d`).
+2. `./scripts/rollback.sh v1.1.0` (équivalent : `IMAGE_TAG=v1.1.0 docker compose --env-file .env.deploy -f compose.staging.yaml up -d`).
 3. `scripts/wait-healthy.sh` vérifie `/api/health` et le frontend → OK.
 4. Le label de l'image redevient `1.1.0`, puis `./scripts/deploy.sh v1.2.0` restaure la version courante.
 

@@ -23,6 +23,9 @@ fi
 # Priorité à l'argument : l'image tirée est exactement celle du tag demandé.
 export IMAGE_TAG="$TAG"
 
+# .env.deploy n'est pas le .env par défaut de Compose : on le passe explicitement.
+COMPOSE=(docker compose --env-file .env.deploy -f compose.staging.yaml)
+
 # Le frontend est servi par Nginx depuis ./frontend/dist (non versionné).
 if [[ ! -f frontend/dist/index.html ]]; then
   echo "[..] frontend/dist absent : construction"
@@ -31,14 +34,14 @@ if [[ ! -f frontend/dist/index.html ]]; then
 fi
 
 echo "[..] récupération de ghcr.io/mzn17/smartshop-api:$TAG"
-docker compose -f compose.staging.yaml pull
+"${COMPOSE[@]}" pull
 
 echo "[..] mise en service"
-docker compose -f compose.staging.yaml up -d --remove-orphans
+"${COMPOSE[@]}" up -d --remove-orphans
 
 ./scripts/wait-healthy.sh
 
 printf '%s\n' "$TAG" > .deployed-version
-CID="$(docker compose -f compose.staging.yaml ps -q api)"
+CID="$("${COMPOSE[@]}" ps -q api)"
 VERSION="$(docker inspect --format '{{ index .Config.Labels "version" }}' "$CID")"
 echo "[OK] version en service : $TAG (label de l'image : $VERSION)"
