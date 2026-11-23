@@ -2,7 +2,7 @@ name: smartshop-staging
 
 services:
   api:
-    image: ghcr.io/mezen17/smartshop-api:${IMAGE_TAG}
+    image: ghcr.io/mzn17/smartshop-api:${IMAGE_TAG}
     ports: ["5000:5000"]
     environment:
       - PORT=5000
