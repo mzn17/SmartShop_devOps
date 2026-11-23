@@ -84,24 +84,24 @@ Workflow : [`.github/workflows/ci.yml`](.github/workflows/ci.yml)
 ## Livraison (image publiée, jamais reconstruite)
 
 ```bash
-git tag v1.2.0
-git push origin v1.2.0
+git tag v1.2.1
+git push origin v1.2.1
 ```
 
-Le job `publish` construit et publie `ghcr.io/mzn17/smartshop-api:v1.2.0`.
+Le job `publish` construit et publie `ghcr.io/mzn17/smartshop-api:v1.2.1`.
 L'environnement de test ne contient **aucun `build:`** : il tire cette image telle quelle.
 
 ## Mise en service (environnement de test)
 
 ```bash
 cp .env.deploy.example .env.deploy   # une seule fois, puis adapter JWT_SECRET
-./scripts/deploy.sh v1.2.0
+./scripts/deploy.sh v1.2.1
 ```
 
 Le script :
 
 1. vérifie `.env.deploy` ;
-2. tire `ghcr.io/mzn17/smartshop-api:v1.2.0` ;
+2. tire `ghcr.io/mzn17/smartshop-api:v1.2.1` ;
 3. démarre `compose.staging.yaml` (`--remove-orphans`) ;
 4. attend `/api/health` et le frontend (`scripts/wait-healthy.sh`) ;
 5. affiche le label `version` de l'image réellement en service.
@@ -111,14 +111,14 @@ Le script :
 Les images sont immuables et taguées : revenir en arrière = remettre l'ancien tag.
 
 ```bash
-./scripts/rollback.sh v1.1.0     # remet en service la version précédente
-./scripts/deploy.sh v1.2.0       # re-déploie la version courante
+./scripts/rollback.sh v1.2.0     # remet en service la version précédente
+./scripts/deploy.sh v1.2.1       # re-déploie la version courante
 ```
 
 Même mécanisme manuel :
 
 ```bash
-IMAGE_TAG=v1.1.0 docker compose --env-file .env.deploy -f compose.staging.yaml up -d
+IMAGE_TAG=v1.2.0 docker compose --env-file .env.deploy -f compose.staging.yaml up -d
 ```
 
 ## Protection de `main` et démonstration du pipeline rouge
@@ -143,10 +143,22 @@ main
 ├── feature/docker-compose    → compose.yaml + nginx.conf
 ├── feature/ci-pipeline       → .github/workflows/ci.yml
 ├── feature/staging           → compose.staging.yaml + wait-healthy.sh
-└── release/1.2.0             → tag v1.2.0
+├── feature/tests-ci-docs     → tests, matrice, deploy/rollback, docs  (v1.2.0)
+├── fix/deploy-env-et-syntaxe → --env-file, erreurs de syntaxe propagées
+├── release/1.2.1             → tag v1.2.1 (version en service)
+└── demo/pipeline-rouge       → erreur volontaire, PR bloquée
 ```
 
-Messages de commit : `type: action` (`feat:`, `fix:`, `ci:`, `docs:`, `chore:`).
+Messages de commit : `type: action` (`feat:`, `fix:`, `ci:`, `docs:`, `chore:`, `test:`).
+
+## Historique des versions
+
+| Tag | Contenu |
+|---|---|
+| `v1.0.0` | première mise en service en environnement de test |
+| `v1.1.0` | image GHCR accessible, README de démarrage |
+| `v1.2.0` | tests API, matrice Node 20/22, scripts `deploy`/`rollback`, documentation |
+| `v1.2.1` | chargement de `.env.deploy` par Compose, échec réel des erreurs de syntaxe |
 
 ## Dépannage
 
