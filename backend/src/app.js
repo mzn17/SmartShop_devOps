@@ -53,3 +53,6 @@ app.use(notFound);
 app.use(errorHandler);
 
 module.exports = app;
+
+// Erreur volontaire : demonstration du pipeline rouge
+const;
