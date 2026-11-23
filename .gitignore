@@ -2,5 +2,11 @@ node_modules/
 dist/
 .env
 .env.deploy
+.deployed-version
+.cache-npm/
 *.log
+*.zip
+*:Zone.Identifier
+/report.txt
+/rapports/report.txt
 .DS_Store
