@@ -6,29 +6,56 @@ on:
     branches: [main]
     tags: ['v*']
 
+permissions:
+  contents: read
+
 jobs:
+  # ── 1. Tests sur deux versions de Node (matrice de versions) ──────────
   test:
+    name: test
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: ['20', '22']
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: ${{ matrix.node-version }}
           cache: 'npm'
-          cache-dependency-path: backend/package-lock.json
-      - run: npm ci --prefix backend
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
+
+      - name: Installer les dépendances backend
+        run: npm ci --prefix backend
+
       - name: Vérification syntaxe backend
         run: find backend -name '*.js' -not -path '*/node_modules/*' -exec node --check {} \;
+
+      - name: Tests backend (node:test)
+        run: npm test --prefix backend
+
+      - name: Construire le frontend
+        run: |
+          npm ci --prefix frontend
+          VITE_API_URL=/api npm run build --prefix frontend
+
       - name: Rapport de contrôles
         shell: bash
         run: ./scripts/check-project.sh 2>&1 | tee report.txt
+
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: rapport-tests
+          name: rapport-tests-node${{ matrix.node-version }}
           path: report.txt
 
+  # ── 2. Construction de l'image API (après les tests) ─────────────────
   docker-build:
+    name: docker-build
     needs: test
     runs-on: ubuntu-latest
     steps:
@@ -40,7 +67,9 @@ jobs:
           push: false
           tags: smartshop-api:ci
 
+  # ── 3. Publication de l'image sur un tag vX.Y.Z ──────────────────────
   publish:
+    name: publish
     needs: [test, docker-build]
     if: github.ref_type == 'tag'
     runs-on: ubuntu-latest
@@ -61,3 +90,40 @@ jobs:
           context: backend
           push: true
           tags: ${{ env.IMAGE }}:${{ github.ref_name }}
+
+  # ── 4. (Bonus) Déploiement automatique sur tag ───────────────────────
+  # Désactivé par défaut. Pour l'activer :
+  #   1. Enregistrer un runner self-hosted : Settings > Actions > Runners
+  #   2. Créer la variable de dépôt DEPLOY_ENABLED=true
+  #   3. Créer le secret STAGING_JWT_SECRET
+  # Le job ne reconstruit jamais l'image : il tire celle publiée sur GHCR.
+  deploy:
+    name: deploy-staging
+    needs: publish
+    if: github.ref_type == 'tag' && vars.DEPLOY_ENABLED == 'true'
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Construire le frontend (fichiers statiques)
+        run: |
+          npm ci --prefix frontend
+          VITE_API_URL=/api npm run build --prefix frontend
+
+      - name: Préparer .env.deploy
+        run: |
+          printf 'IMAGE_TAG=%s\n' "${GITHUB_REF_NAME}" > .env.deploy
+          printf 'JWT_SECRET=%s\n' "${{ secrets.STAGING_JWT_SECRET }}" >> .env.deploy
+
+      - name: Mettre en service l'image publiée
+        run: |
+          docker compose -f compose.staging.yaml pull
+          docker compose -f compose.staging.yaml up -d --remove-orphans
+          ./scripts/wait-healthy.sh
+
+      - name: Vérifier la version réellement en service
+        run: docker inspect --format '{{ index .Config.Labels "version" }}' smartshop-staging-api-1
